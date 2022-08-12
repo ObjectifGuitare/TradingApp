@@ -2,8 +2,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Mail;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
+
 
 namespace TradingAppTest.Controllers
 {
@@ -13,45 +16,85 @@ namespace TradingAppTest.Controllers
     {
         public static User user = new User();
 
+
         public readonly IConfiguration Configuration;
         private readonly DataContext context;
 
-        public AuthController(IConfiguration configuration)
+        public AuthController(IConfiguration configuration, DataContext context)
         {
             Configuration = configuration;
-        }
-
-
-        public AuthController(DataContext context)
-        {
             this.context = context;
         }
+
+
 
         [HttpPost("register")]
         public async Task<ActionResult<User>> Register(UserDto request)
         {
+            var cobaye = new User();
+            var profile = new Profile();
+            int i = 0;
+
+            var mesUsers = await context.users.Where(x => x.Email == request.Email).ToListAsync();
+            mesUsers.ForEach(a => i++);
+            if (i > 1)
+                return BadRequest("email already exists");
+            Regex validateGuidRegex = new Regex("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$");
+            if (!validateGuidRegex.IsMatch(request.Password))
+                return BadRequest("Password doesn't match requirements");
+            if (!IsMailFormatValid(request.Email))
+                return BadRequest("Enter a valid email address !");
             CreatePwdHash(request.Password, out byte[] pwdHash, out byte[] pwdSalt);
 
-            user.Email = request.Email;
-            user.PasswordHash = pwdHash;
-            user.PasswordSalt = pwdSalt;
+            cobaye.Email = request.Email;
+            cobaye.PasswordHash = pwdHash;
+            cobaye.PasswordSalt = pwdSalt;
+            context.users.Add(cobaye);
+            await context.SaveChangesAsync();
+            
 
-            return Ok(user);
+            profile.address = request.Address;
+            profile.first_name = request.First_name;
+            profile.last_name = request.Last_name;
+            var temp = await context.users.ToListAsync();
+            var FkId = temp.LastOrDefault().Id;
+            profile.userId = FkId;
+            Console.WriteLine(FkId);
+
+            context.profiles.Add(profile);
+            await context.SaveChangesAsync();
+            /* return Ok(await context.users.ToListAsync());*/
+            return Ok("registered baby");
         }
+
+        [HttpGet("GetUsers")]
+
+        public async Task<ActionResult<User>> GetUsers()
+        {
+            return Ok(await context.users.ToListAsync());
+        }
+
 
         [HttpPost("login")]
         public async Task<ActionResult<string>> Login(UserDto request)
         {
-            // SERVER CRASH WHEN PWD IS NULL
+            /*var usersFromDb = await context.users.Emails.ToListAsync();*/
+
+
+            if (request.Password == "")
+                return BadRequest("remplis ton mot secret fieu");
+
+            int i = 0;
+            var SupposedUser = await context.users.Where(x => x.Email == request.Email).ToListAsync();
+            
+            SupposedUser.ForEach(a => i++);
+            if (i < 1)
+                return BadRequest("Email or pwd is not THE RIGHT ONE PLEASE");
+
             /*
-                        var usersFromDb = await context.users.Emails.ToListAsync();*/
-            Console.WriteLine(await context.users.ToListAsync());
-            if(user.Email != request.Email)
-            {
-                return BadRequest("User Not Found");
-            }
-            if (!VerifyPwdHash(request.Password, user.PasswordHash, user.PasswordSalt))
-                return BadRequest("L'e mail ou le mot de passe est increct");
+            Console.WriteLine("ICI ICI ICI " + SupposedUser.FirstOrDefault().PasswordSalt);*/
+            if (!VerifyPwdHash(request.Password, SupposedUser.FirstOrDefault().PasswordHash, SupposedUser.FirstOrDefault().PasswordSalt))
+                return BadRequest("Email or pwd is not THE RIGHT ONE PLEASE");
             string token = CreateToken(user);
             return Ok(token);
         }
@@ -96,6 +139,20 @@ namespace TradingAppTest.Controllers
             {
                 var computedHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
                 return computedHash.SequenceEqual(pwdHash);
+            }
+        }
+
+        private bool IsMailFormatValid(string emailaddress)
+        {
+            try
+            {
+                MailAddress m = new MailAddress(emailaddress);
+
+                return true;
+            }
+            catch (FormatException)
+            {
+                return false;
             }
         }
     }

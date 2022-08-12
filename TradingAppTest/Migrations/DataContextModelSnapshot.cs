@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TradingAppTest.Data;
 
 #nullable disable
@@ -17,6 +18,7 @@ namespace TradingAppTest.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                 .HasAnnotation("ProductVersion", "6.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
@@ -26,7 +28,8 @@ namespace TradingAppTest.Migrations
                 {
                     b.Property<int>("id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("profile_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"), 1L, 1);
 
@@ -39,10 +42,13 @@ namespace TradingAppTest.Migrations
                     b.Property<string>("last_name")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("user_id")
+                    b.Property<int>("userId")
                         .HasColumnType("int");
 
                     b.HasKey("id");
+
+                    b.HasIndex("userId")
+                        .IsUnique();
 
                     b.ToTable("profiles");
                 });
@@ -73,6 +79,9 @@ namespace TradingAppTest.Migrations
                     b.Property<int>("profile_id")
                         .HasColumnType("int");
 
+                    b.Property<int>("profileid")
+                        .HasColumnType("int");
+
                     b.Property<int>("quantity")
                         .HasColumnType("int");
 
@@ -81,20 +90,24 @@ namespace TradingAppTest.Migrations
 
                     b.HasKey("id");
 
+                    b.HasIndex("profileid");
+
                     b.ToTable("trades");
                 });
 
             modelBuilder.Entity("TradingAppTest.User", b =>
                 {
-                    b.Property<int>("id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"), 1L, 1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<byte[]>("PasswordHash")
                         .IsRequired()
@@ -104,7 +117,7 @@ namespace TradingAppTest.Migrations
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
-                    b.HasKey("id");
+                    b.HasKey("Id");
 
                     b.ToTable("users");
                 });
@@ -120,7 +133,7 @@ namespace TradingAppTest.Migrations
                     b.Property<int>("amount")
                         .HasColumnType("int");
 
-                    b.Property<int>("profile_id")
+                    b.Property<int>("profileid")
                         .HasColumnType("int");
 
                     b.Property<bool>("withdrawal")
@@ -128,7 +141,55 @@ namespace TradingAppTest.Migrations
 
                     b.HasKey("id");
 
+                    b.HasIndex("profileid");
+
                     b.ToTable("wires");
+                });
+
+            modelBuilder.Entity("TradingAppTest.Profile", b =>
+                {
+                    b.HasOne("TradingAppTest.User", "user")
+                        .WithOne("Profile")
+                        .HasForeignKey("TradingAppTest.Profile", "userId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("user");
+                });
+
+            modelBuilder.Entity("TradingAppTest.Trade", b =>
+                {
+                    b.HasOne("TradingAppTest.Profile", "profile")
+                        .WithMany("Trades")
+                        .HasForeignKey("profileid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("profile");
+                });
+
+            modelBuilder.Entity("TradingAppTest.Wire", b =>
+                {
+                    b.HasOne("TradingAppTest.Profile", "profile")
+                        .WithMany("Wires")
+                        .HasForeignKey("profileid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("profile");
+                });
+
+            modelBuilder.Entity("TradingAppTest.Profile", b =>
+                {
+                    b.Navigation("Trades");
+
+                    b.Navigation("Wires");
+                });
+
+            modelBuilder.Entity("TradingAppTest.User", b =>
+                {
+                    b.Navigation("Profile")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

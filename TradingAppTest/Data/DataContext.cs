@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 /*using Microsoft.AspNetCore.Identity.EntityFrameworkCore;*/
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace TradingAppTest.Data
 {
@@ -8,11 +9,13 @@ namespace TradingAppTest.Data
         {
             public DataContext(DbContextOptions<DataContext> options) : base(options) { }
 
-            /*protected override void OnModelCreating(ModelBuilder modelBuilder)
+            protected override void OnModelCreating(ModelBuilder modelBuilder)
             {
                 modelBuilder.UseIdentityColumns();
-                base.OnModelCreating(modelBuilder);
-            }*/
+                base.OnModelCreating(modelBuilder);   
+            }
+
+            
             public DbSet<User> users { get; set; }
             public DbSet<Profile> profiles { get; set; }
             public DbSet<Trade> trades { get; set; }
